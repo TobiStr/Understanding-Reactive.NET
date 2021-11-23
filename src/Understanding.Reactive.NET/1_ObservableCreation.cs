@@ -3,6 +3,7 @@ using System.Reactive.Linq;
 using System;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using System.Reactive.Disposables;
 
 namespace Understanding.Reactive.NET;
 
@@ -32,7 +33,14 @@ internal class ObservableCreationTests
     [Test]
     public async Task CreateObservableTest()
     {
-        var o = Observable.Create();
+
+        // Create requires to return an IDisposable at the end of the Sequence
+        var o = Observable.Create<int>(o =>
+        {
+            o.OnNext(1);
+            o.OnCompleted();
+            return Disposable.Create(() => Print("Disposed"));
+        });
 
         o.Subscribe(
             next => Print(next),
@@ -45,7 +53,9 @@ internal class ObservableCreationTests
         Assert.That(true);
 
         //Output:
+        // 1
         // Finished
+        // Disposed
     }
 
     private void Print<T>(T param)
