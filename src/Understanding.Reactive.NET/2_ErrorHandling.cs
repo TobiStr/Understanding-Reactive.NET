@@ -21,7 +21,7 @@ internal class ErrorHandlingTests
             .Range(0,4)
             .Select(i => {
                 if (i == 2)
-                    throw new Exception();
+                    throw new Exception("i is 2");
                 return i;
             });
     }
@@ -46,6 +46,37 @@ internal class ErrorHandlingTests
 
         //Output:
         //  0
+        //  1
+        //  Exception: Exception of type 'System.Exception' was thrown.
+        //  9
+        //  10
+    }
+
+    [Test]
+    public void DoThrowCatchTest()
+    {
+        Func<Exception, IObservable<int>> errorHandler = ex => {
+            Print("Exception: " + ex.Message);
+            return Observable.Range(9, 2);
+        };
+
+        Observable
+            .Range(0, 4)
+            .Do(i => {
+                if (i == 2)
+                    throw new Exception("i is 2");
+            })
+            .Do(Print)
+            .Catch(errorHandler)
+            .Do(Print)
+            .Subscribe();
+
+        Assert.That(true);
+
+        //Output:
+        //  0
+        //  0
+        //  1
         //  1
         //  Exception: Exception of type 'System.Exception' was thrown.
         //  9
@@ -96,6 +127,31 @@ internal class ErrorHandlingTests
         //  Exception: Exception of type 'System.Exception' was thrown.
     }
 
+    [Test]
+    public async Task TimerRetryTest()
+    {
+        Func<Exception, IObservable<string>> errorHandler = ex => {
+            Print("Error: " + ex.Message);
+            return Observable.Throw<string>(ex);
+        };
+
+        var ticker = Observable
+               .Timer(TimeSpan.FromMilliseconds(10), TimeSpan.FromMilliseconds(100));
+
+        ticker
+            .Do(i =>
+            {
+                if (i == 3)
+                    throw new Exception("i is 3");
+            })
+            .Select(x => $"{x} Seconds elapsed")
+            .Do(Print)
+            .Catch(errorHandler)
+            .Retry(5)
+            .Subscribe();
+
+        await Task.Delay(10000);
+    }
 
     private void Print<T>(T param)
     {
