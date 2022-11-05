@@ -18,10 +18,11 @@ internal class ErrorHandlingTests
     public void Setup()
     {
         throwsAtTwo = Observable
-            .Range(0,4)
-            .Select(i => {
+            .Range(0, 4)
+            .Select(i =>
+            {
                 if (i == 2)
-                    throw new Exception("i is 2");
+                    throw new NullReferenceException("i is 2");
                 return i;
             });
     }
@@ -31,7 +32,8 @@ internal class ErrorHandlingTests
     {
         //This seems to be the only possibility to use an error handler
         //inside Catch. Lambda Expressions seem not to work.
-        Func<Exception, IObservable<int>> errorHandler = ex => {
+        Func<Exception, IObservable<int>> errorHandler = ex =>
+        {
             Print("Exception: " + ex.Message);
             return Observable.Range(9, 2);
         };
@@ -55,18 +57,19 @@ internal class ErrorHandlingTests
     [Test]
     public void DoThrowCatchTest()
     {
-        Func<Exception, IObservable<int>> errorHandler = ex => {
+        Func<Exception, IObservable<int>> errorHandler = ex =>
+        {
             Print("Exception: " + ex.Message);
             return Observable.Range(9, 2);
         };
 
         Observable
             .Range(0, 4)
-            .Do(i => {
+            .Do(i =>
+            {
                 if (i == 2)
                     throw new Exception("i is 2");
             })
-            .Do(Print)
             .Catch(errorHandler)
             .Do(Print)
             .Subscribe();
@@ -75,8 +78,6 @@ internal class ErrorHandlingTests
 
         //Output:
         //  0
-        //  0
-        //  1
         //  1
         //  Exception: Exception of type 'System.Exception' was thrown.
         //  9
@@ -104,10 +105,75 @@ internal class ErrorHandlingTests
     }
 
     [Test]
+    public void SwitchTest()
+    {
+        Func<Exception, IObservable<int>> errorHandler = ex =>
+        {
+            Print("Exception: " + ex.Message);
+            return Observable.Range(9, 2);
+        };
+
+        //Will finish with an Exception
+        Assert.Throws(
+            typeof(Exception),
+            () => Observable.Return(1)
+                .Select(_ => throwsAtTwo.Catch(errorHandler))
+                .Switch()
+                .Subscribe(Print)
+        );
+
+        //Output:
+        //  0
+        //  1
+        //  Exception: Exception of type 'System.Exception' was thrown.
+        //  0
+        //  1
+        //  Exception: Exception of type 'System.Exception' was thrown.
+    }
+
+    [Test]
+    public Task RetryTestWithCatch()
+    {
+        var throwsAtTwo = Observable
+           .Range(0, 4)
+           .Select(i =>
+           {
+               if (i == 2)
+                   throw new NullReferenceException("i is 2");
+               return i;
+           });
+
+        Func<Exception, IObservable<int>> errorHandler = ex =>
+        {
+            Print("!Exception: " + ex.Message);
+
+            if (ex is NullReferenceException)
+                return Observable.Range(9, 2);
+            else
+                throw ex;
+        };
+
+        throwsAtTwo
+           .Catch(errorHandler)
+           .Retry(2)
+           .Subscribe(Print);
+
+        return Task.Delay(1000);
+
+        //Output:
+        //  0
+        //  1
+        //  Exception: Exception of type 'System.Exception' was thrown.
+        //  0
+        //  1
+        //  Exception: Exception of type 'System.Exception' was thrown.
+    }
+
+    [Test]
     public async Task RetryWhenTest()
     {
         var signal = Observable
-            .Timer(DateTimeOffset.Now, TimeSpan.FromSeconds(1));
+            .Timer(DateTimeOffset.Now, TimeSpan.FromMilliseconds(1000));
 
         throwsAtTwo
              .RetryWhen(_ => signal)
@@ -130,7 +196,8 @@ internal class ErrorHandlingTests
     [Test]
     public async Task TimerRetryTest()
     {
-        Func<Exception, IObservable<string>> errorHandler = ex => {
+        Func<Exception, IObservable<string>> errorHandler = ex =>
+        {
             Print("Error: " + ex.Message);
             return Observable.Throw<string>(ex);
         };
