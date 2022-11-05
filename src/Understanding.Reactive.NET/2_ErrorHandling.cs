@@ -173,7 +173,7 @@ internal class ErrorHandlingTests
     public async Task RetryWhenTest()
     {
         var signal = Observable
-            .Timer(DateTimeOffset.Now, TimeSpan.FromMilliseconds(1000));
+            .Timer(DateTimeOffset.Now.AddSeconds(1));
 
         throwsAtTwo
              .RetryWhen(_ => signal)
@@ -182,9 +182,6 @@ internal class ErrorHandlingTests
         await Task.Delay(1000);
 
         //Output:
-        //  0
-        //  1
-        //  Exception: Exception of type 'System.Exception' was thrown.
         //  0
         //  1
         //  Exception: Exception of type 'System.Exception' was thrown.
